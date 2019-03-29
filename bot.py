@@ -4,25 +4,19 @@ import json
 import time
 from bs4 import BeautifulSoup
 
-def helpMessage(a):
-    text = 'You can always see this menu using /help\n' \
-           'You can add a steam account using /addAccount [STEAMID64]\n' \
-           'You can check for changes in your inventory using /check\n'
-    helpURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-    requests.get(helpURL)
+token = '712182367:AAH9MO0MkOO1ohikgWGIlJFTMDbO1VlSXmY'
 
-def startMessage(a):
-    text = 'Hello!\n' \
-           'This bot will help you know if the number of Steam items in your CSGO inventory changes.\n' \
-           'To see the list of possible commands, type /help\n'
-    startURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-    requests.get(startURL)
+httpsProxy = {'https' : '134.209.80.237:80'}
+
+
+def sendMessage(a, text):
+    URL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
+    requests.get(URL, proxies=httpsProxy)
+
 
 def addAccount(a, cmd):
     if len(cmd) != 29:
-        text = 'Length of the command does not match a required length. Maybe you wrote wrong steamID? Try again or use /help'
-        eURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-        requests.get(eURL)
+        sendMessage(a, 'Length of the command does not match a required length. Maybe you wrote wrong steamID? Try again or use /help')
         return 0
 
     steamid64 = cmd.split(' ')[1]
@@ -43,9 +37,7 @@ def addAccount(a, cmd):
         f.write(f"{steamid64}|{items_counter}|{nick}|\n")
         f.close()
 
-        text = 'Account added successfully.'
-        successURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-        requests.get(successURL)
+        sendMessage(a, 'Account added successfully.')
     else:
         nick = BeautifulSoup(getRequest, "html.parser").select(".whiteLink")[0].text
 
@@ -53,17 +45,13 @@ def addAccount(a, cmd):
         f.write(f"{steamid64}|{'0'}|{nick}|\n")
         f.close()
 
-        text = 'Account added successfully.\n' \
-               'NOTE: Seems like your account is private or has 0 CSGO items.\n'\
-               'Please make inventory public to see updates for this account in the future.'
-        successURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-        requests.get(successURL)
+        sendMessage(a,                  'Account added successfully.\n'
+                                        'NOTE: Seems like your account is private or has 0 CSGO items.\n'
+                                        'Please make inventory public to see updates for this account in the future.\n')
 
 
 def check(a):
-    text = 'Starting a check...'
-    successURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-    requests.get(successURL)
+    sendMessage(a, 'Starting a check...')
 
     f = open(f'{a}.txt', 'r+')
 
@@ -85,16 +73,12 @@ def check(a):
                 items_counter_str = inventoryPageStr.split('(')[1].split(')')[0]
                 items_counter = int(items_counter_str)
 
-                text = f'Checking {nickname}...'
-                eURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-                requests.get(eURL)
+                sendMessage(a, f'Checking {nickname}...')
 
                 temp = open(f'{a}_temp.txt', 'w')
 
                 if items_counter != dbItems:
-                    text = f'{nickname} got {items_counter - dbItems} items from the last check\n'
-                    eURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-                    requests.get(eURL)
+                    sendMessage(a, f'{nickname} got {items_counter - dbItems} items from the last check\n')
 
                     temp.write(f'{steamid64}|{items_counter}|{nickname}|\n')
                     temp.close()
@@ -107,13 +91,9 @@ def check(a):
                 temp.write(f"{steamid64}|{'0'}|{nickname}|\n")
                 temp.close()
 
-                text = f"Seems like inventory of {nickname} has 0 CSGO items or is private."
-                eURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-                requests.get(eURL)
+                sendMessage(a, f"Seems like inventory of {nickname} has 0 CSGO items or is private.")
         else:
-            text = f'Checking done successfully.'
-            eURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-            requests.get(eURL)
+            sendMessage(a, f'Checking done successfully.')
             break
 
     f.close()
@@ -121,34 +101,30 @@ def check(a):
     os.rename(f'{a}_temp.txt', f'{a}.txt')
 
 
-
-
-def unknownText(a):
-    text = 'Sorry, but i only understand commands listed in /help'
-    unkURL = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={a}&text={text}'
-    requests.get(unkURL)
-
-
-
 def getUpdates(c):
     URL = f'https://api.telegram.org/bot{token}/getUpdates?offset={c}'
-    getRequest = requests.get(URL).text
+    getRequest = requests.get(URL, proxies = httpsProxy).text
     dict = json.loads(getRequest)
     print(getRequest + "\n")
     if dict["result"] != []:
+        #print(dict)
         text = dict["result"][0]["message"]["text"]
         sender = dict["result"][0]["message"]["from"]["id"]
-        print(sender)
+        #print(sender)
         if text == '/help':
-            helpMessage(sender)
+            sendMessage(sender,     'You can always see this menu using /help\n'
+                                    'You can add a steam account using /addAccount [STEAMID64]\n'
+                                    'You can check for changes in your inventory using /check\n' )
         elif text == '/start':
-            startMessage(sender)
+            sendMessage(sender,     'Hello!\n'
+                                    'This bot will help you know if the number of Steam items in your CSGO inventory changes.\n'
+                                    'To see the list of possible commands, type /help\n')
         elif text.split(" ")[0] == '/addAccount':
             addAccount(sender, text)
         elif text == '/check':
             check(sender)
         else:
-            unknownText(sender)
+            sendMessage(sender,     'Sorry, but i only understand commands listed in /help')
         return dict["result"][0]["update_id"]
     return 0
 
